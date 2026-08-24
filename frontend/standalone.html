@@ -696,8 +696,14 @@ function level(s) {
 }
 function App() {
   const [text, setText] = usePersist("text", SAMPLE);
+  const [pro, setPro] = React.useState(zenIsPro());
   const a = analyze(text);
   const lv = a ? level(a.score) : ["", "vmid"];
+  const onCheckBlur = () => {
+    if (!a) return;
+    if (!pro && !zenCanUse()) { zenShowPaywall(); return; }
+    if (!pro) { zenRecordUse(); setPro(zenIsPro()); }
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "wrap"
   }, /*#__PURE__*/React.createElement(DataBar, null), /*#__PURE__*/React.createElement("h1", null, "\u8868\u30C7\u30FC\u30BF \u54C1\u8CEA\u30C1\u30A7\u30C3\u30AF"), /*#__PURE__*/React.createElement("div", {
@@ -717,6 +723,7 @@ function App() {
     },
     value: text,
     onChange: e => setText(e.target.value),
+    onBlur: onCheckBlur,
     placeholder: "\u6C0F\u540D,\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9,\u91D1\u984D\n\u7530\u4E2D\u592A\u90CE,tanaka@example.com,12000"
   }), a && /*#__PURE__*/React.createElement("div", {
     className: "sub"
@@ -1454,5 +1461,106 @@ function ShareBar() {
     }
   }, "\u203B\u300C\u30B5\u30FC\u30D0\u30FC\u306B\u4FDD\u5B58\u300D\u3092\u62BC\u3057\u305F\u3068\u304D\u3060\u3051\u9001\u4FE1\u3055\u308C\u307E\u3059\u3002\u62BC\u3055\u306A\u3051\u308C\u3070\u3001\u3053\u308C\u307E\u3067\u901A\u308A\u7AEF\u672B\u5185\u3060\u3051\u3067\u51E6\u7406\u3055\u308C\u307E\u3059\u3002"));
 }
+
+// \u6CD5\u4EBA\u5411\u3051\u30E9\u30A4\u30BB\u30F3\u30B9\u8CA9\u58F2\uFF08LicenseBar/licValid\u7B49\uFF09\u3092\u524D\u63D0\u3068\u3057\u305F\u5B9F\u88C5\u306E\u307F\u3067\u3001
+// Zen\u30A2\u30D7\u30EA\u6A19\u6E96\u306E\u500B\u4EBA\u5411\u3051\u8CB7\u3044\u5207\u308A\u30DA\u30A4\u30A6\u30A9\u30FC\u30EB\u304C\u5B58\u5728\u3057\u306A\u304B\u3063\u305F\u3002\u30AB\u30BF\u30ED\u30B0
+// \uFF08zenapps.json\uFF09\u5074\u306B\u306FPro\u4FA1\u683C\u30FBStripe\u6C7A\u6E08URL\u304C\u65E2\u306B\u8A2D\u5B9A\u3055\u308C\u3066\u3044\u308B\u306E\u306B
+// \u30A2\u30D7\u30EA\u5074\u306B\u8AB2\u91D1\u5C0E\u7DDA\u304C\u7121\u3044\u72B6\u614B\u3060\u3063\u305F\u305F\u3081\u3001certzen/geoauditzen\u7B49\u3068\u540C\u3058\u8A2D\u8A08\u306E
+// \u30DA\u30A4\u30A6\u30A9\u30FC\u30EB\u3092\u8FFD\u52A0\u3059\u308B\u3002\u65E2\u5B58\u306Edi-tools\u30E9\u30A4\u30BB\u30F3\u30B9\u6A5F\u69CB\uFF08LicenseBar\u7B49\uFF09\u3068\u306F
+// \u72EC\u7ACB\u3057\u3066\u52D5\u4F5C\u3057\u3001\u5E72\u6E09\u3057\u306A\u3044\uFF08di-tools\u5074\u306F\u300C\u30B5\u30FC\u30D0\u30FC\u5171\u6709\u300D\u6A5F\u80FD\u306E\u307F\u3092\u5236\u5FA1\u3001
+// \u3053\u3061\u3089\u306F\u300C\u70B9\u691C\u7D50\u679C\u306E\u78BA\u8A8D\u300D\u3092\u5236\u5FA1\u3059\u308B\uFF09\u3002
+(function () {
+  var ZEN_STORE_KEY = 'zen-paywall-v1';
+  var ZEN_SLUG = 'dataqczen';
+  var ZEN_FREE_LIMIT = 3;
+  var ZEN_APP_TITLE = 'DataQcZen';
+  var ZEN_PRICE = '\u00A5980';
+  var ZEN_PRO_FEATURES = ['\u6307\u6458\u4EF6\u6570\u306E\u4E0A\u9650\u89E3\u9664\uFF0841\u4EF6\u4EE5\u964D\u3082\u8868\u793A\uFF09', '\u70B9\u691C\u7D50\u679C\u306EJSON\u66F8\u304D\u51FA\u3057', '\u8907\u6570\u30B7\u30FC\u30C8\u306E\u4E00\u62EC\u70B9\u691C'];
+  var ZEN_TEASER = '\u3010\u70B9\u691C\u7D50\u679C\u3011\u7A7A\u6B04\u30FB\u91CD\u8907\u30FB\u5168\u89D2\u6570\u5B57\u30FB\u65E5\u4ED8\u6DF7\u5728\u306A\u3069\u3092\u691C\u51FA\u4E2D\u2026';
+  var ZEN_PAYMENT_LINK = 'https://buy.stripe.com/7sY8wQbaugHzgh59c02ZO16';
+
+  function zenLoadAll() {
+    try { return JSON.parse(localStorage.getItem(ZEN_STORE_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+  function zenState() {
+    var all = zenLoadAll();
+    return all[ZEN_SLUG] || { used: 0, pro: false, purchasedAt: null };
+  }
+  function zenSetState(s) {
+    var all = zenLoadAll();
+    all[ZEN_SLUG] = s;
+    try { localStorage.setItem(ZEN_STORE_KEY, JSON.stringify(all)); } catch (e) {}
+  }
+  function zenCheckPurchaseReturn() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('zen_pro') === '1' && params.get('slug') === ZEN_SLUG) {
+      zenUnlockPro();
+      params.delete('zen_pro'); params.delete('slug');
+      var clean = window.location.pathname + (params.toString() ? '?' + params : '');
+      window.history.replaceState({}, '', clean);
+    }
+  }
+  window.zenIsPro = function () { return zenState().pro === true; };
+  window.zenCanUse = function () { return window.zenIsPro() || zenState().used < ZEN_FREE_LIMIT; };
+  window.zenRemaining = function () {
+    return window.zenIsPro() ? Infinity : Math.max(0, ZEN_FREE_LIMIT - zenState().used);
+  };
+  window.zenRecordUse = function () {
+    if (window.zenIsPro()) return;
+    var s = zenState();
+    s.used += 1;
+    zenSetState(s);
+  };
+  function zenUnlockPro() {
+    var s = zenState();
+    s.pro = true;
+    s.purchasedAt = new Date().toISOString();
+    zenSetState(s);
+  }
+  function zenStartCheckout() {
+    var ret = encodeURIComponent(window.location.origin + window.location.pathname + '?zen_pro=1&slug=' + ZEN_SLUG);
+    var url = ZEN_PAYMENT_LINK + (ZEN_PAYMENT_LINK.indexOf('?') >= 0 ? '&' : '?') + 'client_reference_id=' + ZEN_SLUG + '&redirect=' + ret;
+    window.location.href = url;
+  }
+  window.zenShowPaywall = function () {
+    var existing = document.getElementById('zen-paywall-modal');
+    if (existing) existing.remove();
+
+    var previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    var blockScroll = function (e) { e.preventDefault(); };
+    document.addEventListener('wheel', blockScroll, { passive: false });
+    document.addEventListener('touchmove', blockScroll, { passive: false });
+    var restoreScroll = function () {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener('wheel', blockScroll);
+      document.removeEventListener('touchmove', blockScroll);
+    };
+    window.scrollTo(0, 0);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'zen-paywall-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:sans-serif';
+    var feats = ZEN_PRO_FEATURES.map(function (f) { return '<li>' + f + '</li>'; }).join('');
+    overlay.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      + '<div style="font-size:2rem;margin-bottom:8px">\uD83D\uDC8E</div>'
+      + '<h2 style="margin:0 0 6px;font-size:1.2rem;color:#111">' + ZEN_APP_TITLE + ' Pro</h2>'
+      + '<p style="margin:0 0 14px;font-size:.85rem;color:#666">\u7121\u6599\u5206\u3092\u4F7F\u3044\u5207\u308A\u307E\u3057\u305F\u3002Pro\u3067\u5168\u6A5F\u80FD\u304C\u4F7F\u3048\u307E\u3059\u3002</p>'
+      + '<div style="text-align:left;font-size:.78rem;color:#555;background:#f5f3ff;border-radius:8px;padding:8px 10px;margin:0 0 12px">' + ZEN_TEASER + '</div>'
+      + '<ul style="text-align:left;font-size:.82rem;color:#444;margin:0 0 16px;padding-left:18px">' + feats + '</ul>'
+      + '<button id="zen-paywall-buy" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700;font-size:.95rem;cursor:pointer">' + ZEN_PRICE + ' \u3067Pro\u3092\u8CFC\u5165\uFF08\u8CB7\u3044\u5207\u308A\uFF09</button>'
+      + '<button id="zen-paywall-close" style="width:100%;padding:10px;margin-top:8px;border:none;background:none;color:#999;font-size:.82rem;cursor:pointer">\u3042\u3068\u3067</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#zen-paywall-buy').onclick = function () { zenStartCheckout(); };
+    overlay.querySelector('#zen-paywall-close').onclick = function () { restoreScroll(); overlay.remove(); };
+    overlay.onclick = function (e) { if (e.target === overlay) { restoreScroll(); overlay.remove(); } };
+  };
+
+  zenCheckPurchaseReturn();
+})();
+
 ReactDOM.createRoot(document.getElementById("root")).render((typeof Root!=="undefined"?React.createElement(Root):React.createElement(App)));
 </script></html>
