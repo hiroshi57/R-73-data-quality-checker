@@ -704,11 +704,28 @@ function App() {
   const [pro, setPro] = React.useState(zenIsPro());
   const a = analyze(text);
   const lv = a ? level(a.score) : ["", "vmid"];
+  // CVR-134: 「サンプルで試す」ボタンはApp()の外側（ActionBar()）にあるため、
+  // クリック操作自体がtextareaからのフォーカス移動（focusout）を引き起こし、
+  // setText(SAMPLE)がonBlurを直接発火させなくても、ボタンクリックに伴う
+  // 暗黙のフォーカス移動でonCheckBlurが呼ばれてしまう（実機検証で確認済みの
+  // 不具合）。サンプル読み込み直後の1回分だけ無料枠消費をスキップする
+  // フラグで対処する。
+  const skipNextBlurRef = React.useRef(false);
   const onCheckBlur = () => {
+    if (skipNextBlurRef.current) { skipNextBlurRef.current = false; return; }
     if (!a) return;
     if (!pro && !zenCanUse()) { zenShowPaywall(); return; }
     if (!pro) { zenRecordUse(); setPro(zenIsPro()); window.zenMaybeWarnFreeLimit(); window.zenMaybeShowUpsellHint(); window.zenUpdateRemainingBadge(); }
   };
+  // ActionBar()（App()の外側・兄弟コンポーネント）から「サンプルで試す」
+  // ボタンでSAMPLEデータを即時反映できるよう、windowへ公開する。
+  React.useEffect(() => {
+    window.zenLoadSampleData = () => {
+      skipNextBlurRef.current = true;
+      setText(SAMPLE);
+    };
+    return () => { delete window.zenLoadSampleData; };
+  }, []);
   return /*#__PURE__*/React.createElement("div", {
     className: "wrap"
   }, /*#__PURE__*/React.createElement(DataBar, null), /*#__PURE__*/React.createElement("h1", null, "\u8868\u30C7\u30FC\u30BF \u54C1\u8CEA\u30C1\u30A7\u30C3\u30AF"), !pro && /*#__PURE__*/React.createElement("p", {
@@ -840,6 +857,27 @@ function ActionBar() {
       margin: "0 0 12px"
     }
   }, /*#__PURE__*/React.createElement("button", {
+    // CVR-134: クリック一発でSAMPLEデータを反映し、STEP2の点検結果まで
+    // 自動表示する導線。window.zenLoadSampleData()はApp()側のsetTextを
+    // 呼ぶだけで無料枠は消費しない設計だが、ボタンクリックがtextareaの
+    // フォーカスを奪う（brower順序はblur→click）ため、何もしないと
+    // クリック前にtextareaのonBlurが先に発火し意図せず無料枠を消費して
+    // しまう（実機検証で確認済みの不具合）。onMouseDownでpreventDefault()
+    // し、ボタン押下がtextareaのフォーカスを奪わないようにして防ぐ。
+    onMouseDown: function (e) { e.preventDefault(); },
+    onClick: function () {
+      if (window.zenLoadSampleData) window.zenLoadSampleData();
+    },
+    style: {
+      border: "1px solid #c7d2fe",
+      borderRadius: 8,
+      background: "#eef2ff",
+      color: "#3730a3",
+      padding: "8px 14px",
+      cursor: "pointer",
+      fontSize: 13
+    }
+  }, "✨ サンプルで試す"), /*#__PURE__*/React.createElement("button", {
     onClick: function () {
       window.print();
     },
